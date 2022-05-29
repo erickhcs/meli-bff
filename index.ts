@@ -23,30 +23,35 @@ app.listen(port, () => {
 app.get('/api/items', async (req: Request, res: Response) => {
   const query = req.query.q
 
- const { data } = await axiosInstance.get(`/sites/MLA/search?q=${query}`)
+  const { data } = await axiosInstance.get(`/sites/MLA/search?q=${query}`)
 
- const limitedResults: Item[] = data.results.slice(0, 4);
- const items = limitedResults.map(item=> {
+  const limitedResults: Item[] = data.results.slice(0, 4);
+  const items = limitedResults.map(item=> {
     return {
       id: item.id,
       title: item.title,
-      price: item.price,
+      price: {
+        currency: item.currency_id,
+        amount: item.price,
+      },
       picture: item.thumbnail,
       condition: item.condition,
       free_shipping: item.shipping.free_shipping,
+      address: {
+        city_name: item.address.city_name,
+      },
     }
   })
 
- const categories = data.filters[0]?.values[0]?.path_from_root?.map(({ name }: { name:string }) => name) || [];
+  const categories = data.filters[0]?.values[0]?.path_from_root?.map(({ name }: { name:string }) => name) || [];
+  const response = {
+    autor: {
+      name: "Erick",
+      lastname: "Silva",
+    },
+    categories,
+    items,
+  }
 
-  res.json({
-    data: {
-      autor: {
-        name: "Erick",
-        lastname: "Silva",
-      },
-      categories,
-      items,
-    }
-  });
+  res.json(response);
 });
