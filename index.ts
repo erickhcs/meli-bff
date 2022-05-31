@@ -9,17 +9,13 @@ const app: Express = express();
 const port = process.env.PORT;
 
 const axiosInstance = axios.create({
-  baseURL: "https://api.mercadolibre.com/",
+  baseURL: process.env.MELI_API_HOST,
 });
 
 const author =  {
-  name: "Erick",
-  lastname: "Silva",
+  name: process.env.AUTHOR_NAME,
+  lastname: process.env.AUTHOR_LASTNAME,
 };
-
-app.get('/', (req: Request, res: Response) => {
-  res.send('Express + TypeScript Server');
-});
 
 app.get('/api/items', async (req: Request, res: Response) => {
   const query = req.query.q
@@ -28,12 +24,18 @@ app.get('/api/items', async (req: Request, res: Response) => {
 
   const limitedResults: Item[] = data.results.slice(0, 4);
   const items = limitedResults.map(item=> {
+    const splittedAmount = item.price.toString().split('.')
+
+    const amount = Number(splittedAmount[0]);
+    const decimals = Number(splittedAmount[1] || 0);
+
     return {
       id: item.id,
       title: item.title,
       price: {
         currency: item.currency_id,
-        amount: item.price,
+        amount,
+        decimals,
       },
       picture: item.thumbnail,
       condition: item.condition,
@@ -44,7 +46,7 @@ app.get('/api/items', async (req: Request, res: Response) => {
     }
   })
 
-  const categories = data.filters[0]?.values[0]?.path_from_root?.map(({ name }: { name:string }) => name) || [];
+  const categories: String[] = data.filters[0]?.values[0]?.path_from_root?.map(({ name }: { name:string }) => name) || [];
   const response = {
     author,
     categories,
@@ -60,6 +62,11 @@ app.get('/api/items/:id', async (req: Request, res: Response) => {
   const { data: itemCategoryResponse } = await axiosInstance.get(`/categories/${itemResponse.category_id}`)
   const { data: itemDescriptionResponse } = await axiosInstance.get(`/items/${id}/description`)
  
+  const splittedAmount =  itemResponse.price.toString().split('.')
+
+  const amount = Number(splittedAmount[0]);
+  const decimals = Number(splittedAmount[1] || 0);
+
   const response = {
     author,
     categories: itemCategoryResponse.path_from_root.map(({ name }: { name:string }) => name),
@@ -68,7 +75,8 @@ app.get('/api/items/:id', async (req: Request, res: Response) => {
       title: itemResponse.title,
       price: {
         currency: itemResponse.currency_id,
-        amount: itemResponse.price,
+        amount,
+        decimals,
       },
       picture: itemResponse.pictures[0].secure_url,
       condition: itemResponse.condition,

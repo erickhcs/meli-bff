@@ -6,6 +6,7 @@ export type Item = {
     prices: {
       currency: string;
       amount: number;
+      decimals: number;
     };
     thumbnail: string;
     condition: string;
