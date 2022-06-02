@@ -9,8 +9,8 @@ class HTTPClient {
     });
   }
 
-  get(url: string) {
-    return this.instance.get(url);
+  get<T>(url: string) {
+    return this.instance.get<T>(url);
   }
 }
 

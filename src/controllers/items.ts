@@ -1,6 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 import { ENV, HTTPClient } from "../config";
-import { Item, Picture } from "../models";
+import {
+  CategoryResponse,
+  ItemDescriptionResponse,
+  ItemDetailsResponse,
+  ItemsResponse,
+} from "../models";
 
 const author = {
   name: ENV.AUTHOR_NAME,
@@ -20,41 +25,39 @@ class ItemsController {
     try {
       ItemsController.initHTTPClient();
 
-      const query = req.query.q;
+      const query = req.query.q as string;
 
-      const { data } = await ItemsController.httpClient.get(
+      const {
+        data: { results, filters },
+      } = await ItemsController.httpClient.get<ItemsResponse>(
         `/sites/MLA/search?q=${query}`
       );
 
-      const limitedResults: Item[] = data.results.slice(0, 4);
-      const items = limitedResults.map((item) => {
-        return {
-          id: item.id,
-          title: item.title,
-          price: {
-            currency: item.currency_id,
-            amount: item.price,
-          },
-          picture: item.thumbnail,
-          condition: item.condition,
-          free_shipping: item.shipping.free_shipping,
-          address: {
-            city_name: item.address.city_name,
-          },
-        };
-      });
+      const limitedResults = results.slice(0, 4);
 
-      const categories: string[] =
-        data.filters[0]?.values[0]?.path_from_root?.map(
-          ({ name }: { name: string }) => name
-        ) || [];
-      const response = {
+      const items = limitedResults.map((item) => ({
+        id: item.id,
+        title: item.title,
+        picture: item.thumbnail,
+        condition: item.condition,
+        free_shipping: item.shipping.free_shipping,
+        address: {
+          city_name: item.address.city_name,
+        },
+        price: {
+          amount: item.price,
+          currency: item.currency_id,
+        },
+      }));
+
+      const categories =
+        filters[0]?.values[0]?.path_from_root?.map(({ name }) => name) || [];
+
+      res.json({
+        items,
         author,
         categories,
-        items,
-      };
-
-      res.json(response);
+      });
     } catch (error) {
       next(error);
     }
@@ -64,48 +67,62 @@ class ItemsController {
     try {
       ItemsController.initHTTPClient();
 
-      const { id } = req.params;
+      const { id: paramId } = req.params;
 
-      const { data: itemResponse } = await ItemsController.httpClient.get(
-        `/items/${id}`
-      );
-      const { data: itemCategoryResponse } =
-        await ItemsController.httpClient.get(
-          `/categories/${itemResponse.category_id}`
-        );
-      const { data: itemDescriptionResponse } =
-        await ItemsController.httpClient.get(`/items/${id}/description`);
-
-      const maxSizePicture = itemResponse.pictures.sort(
-        (a: Picture, b: Picture) => {
-          const aWidth = Number(a.size.split("x")[0]);
-          const bWidth = Number(b.size.split("x")[0]);
-
-          return aWidth - bWidth;
-        }
-      )[0].secure_url;
-
-      const response = {
-        author,
-        categories: itemCategoryResponse.path_from_root.map(
-          ({ name }: { name: string }) => name
-        ),
-        item: {
-          id: itemResponse.id,
-          title: itemResponse.title,
-          price: {
-            currency: itemResponse.currency_id,
-            amount: itemResponse.price,
-          },
-          picture: maxSizePicture,
-          condition: itemResponse.condition,
-          free_shipping: itemResponse.shipping.free_shipping,
-          sold_quantity: itemResponse.sold_quantity,
-          description: itemDescriptionResponse.plain_text,
+      const {
+        data: {
+          id,
+          price,
+          title,
+          pictures,
+          condition,
+          category_id: categoryId,
+          currency_id: currencyId,
+          sold_quantity: soldQuantity,
+          shipping: { free_shipping: freeShipping },
         },
-      };
+      } = await ItemsController.httpClient.get<ItemDetailsResponse>(
+        `/items/${paramId}`
+      );
 
-      res.json(response);
+      const {
+        data: { path_from_root: pathFromRoot },
+      } = await ItemsController.httpClient.get<CategoryResponse>(
+        `/categories/${categoryId}`
+      );
+
+      const {
+        data: { plain_text: description },
+      } = await ItemsController.httpClient.get<ItemDescriptionResponse>(
+        `/items/${id}/description`
+      );
+
+      const maxSizePicture = pictures.sort((a, b) => {
+        const aWidth = Number(a.size.split("x")[0]);
+        const bWidth = Number(b.size.split("x")[0]);
+
+        return aWidth - bWidth;
+      })[0].secure_url;
+
+      const categories = pathFromRoot.map(({ name }) => name);
+
+      res.json({
+        author,
+        categories,
+        item: {
+          id,
+          title,
+          condition,
+          description,
+          soldQuantity,
+          picture: maxSizePicture,
+          free_shipping: freeShipping,
+          price: {
+            amount: price,
+            currency: currencyId,
+          },
+        },
+      });
     } catch (error) {
       next(error);
     }
