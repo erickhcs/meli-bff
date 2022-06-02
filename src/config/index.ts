@@ -1,5 +1,4 @@
-import dotenv from "dotenv";
+import ENV from "./env";
+import HTTPClient from "./httpClient";
 
-dotenv.config();
-
-export default process.env;
+export { ENV, HTTPClient };
