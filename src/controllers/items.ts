@@ -114,9 +114,9 @@ class ItemsController {
           title,
           condition,
           description,
-          soldQuantity,
           picture: maxSizePicture,
           free_shipping: freeShipping,
+          sold_quantity: soldQuantity,
           price: {
             amount: price,
             currency: currencyId,
