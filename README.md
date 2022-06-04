@@ -4,10 +4,15 @@
 
 - Install dependencies:
 
-  > yarn install
+```bash
+yarn install
+```
 
 - Run dev script
-  > yarn dev
+
+```bash
+yarn dev
+```
 
 The application will run on 8000 port by default.
 
